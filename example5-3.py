@@ -1,5 +1,5 @@
 """
-Example 5-2, pg 191 - Generating Shakespear via LSTMs
+Example 5-3, pg 191 - Generating Shakespear via LSTMs
 
 The training dataset for this example is provided by the Complete Works of William Shakespear
 (http://www.gutenbarg.org/ebooks/100)
