@@ -1,8 +1,13 @@
-# Example 5-2, pg 186 - Modeling Handwritten Images Using CNNs.
-#
-# The training dataset that we'll use is the MNIST handwritten image dataset
-# (http://yann.lecun.com/exdb/mnist/)
+'''
+Example 5-2, pg 186 - Modeling Handwritten Images Using CNNs.
 
+The training dataset that we'll use is the MNIST handwritten image dataset
+(http://yann.lecun.com/exdb/mnist/)
+
+All code is written to run on Tensorflow 2 using the embedded Keras API.
+
+
+'''
 ###############################################################################
 # Imports
 # Modules needed by the script.
