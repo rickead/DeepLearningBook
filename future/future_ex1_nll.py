@@ -1,50 +1,33 @@
-'''
-
-Example 5-1, pg 175 - Modeling CSV data with multilayer perceptron networks
-
-Basic usage of the TensorFlow 2.3 framework using the embedded Keras API 
-using a synthetic non-linear dataset and a multilayer perceptron network.
-
-Dataset: https://github.com/jasonbaldridge/try-tf/tree/master/simdata
-
-'''
+# example 5-1 Modeling CSV data with multilayer perceptron networks
 import tensorflow.python.platform
 import tensorflow as tf
 import pandas as pd
-import wget # pip3 install wget
 import numpy as np
 
 import os
-import sys
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Input, Dense
 from matplotlib import pyplot
 
-path_prefix = os.path.join("data", "example1")
+print("Example 5.1 with TensorFlow version: {}".format(tf.__version__))
+print("Eager execution: {}".format(tf.executing_eagerly()))
+
+path_prefix = os.path.join("data", "classification-simdata")
+# filenameTrain = os.path.join(path_prefix, "saturn_data_train.csv")
+# filenameTest = os.path.join(path_prefix, "saturn_data_eval.csv")
 filenameTrain = "saturn_data_train.csv"
 filenameTest = "saturn_data_eval.csv"
 
-localFilenameTrain = os.path.join(path_prefix, filenameTrain)
-localFilenameTest = os.path.join(path_prefix, filenameTest)
-
 # Data by Dr. Jason Baldridge (http://www.jasonbaldridge.com) to test neural network frameworks.
 # Read "https://github.com/jasonbaldridge/try-tf/tree/master/simdata" and copy
-# to data/example1
-if not os.path.isdir(path_prefix) or not os.path.exists(localFilenameTrain) or not os.path.exists(localFilenameTest):
-    # The actual URL for the raw data is:
-    URL = "https://raw.githubusercontent.com/jasonbaldridge/try-tf/master/simdata/"
-    print("Missing Saturn simulation data!")
-    print("Downloading from", URL)
-    os.mkdir(path_prefix)
-    wget.download(URL + "/" + filenameTrain, localFilenameTrain)
-    wget.download(URL + "/" + filenameTest, localFilenameTest)
+# to data/classification-simdata
+if not os.path.isdir(path_prefix):
+     print("Missing Saturn simulation data!")
+     printf("Downloading from https://github.com/jasonbaldridge/try-tf/tree/master/simdata")
 
-print("\n\nExample 5.1 with TensorFlow version: {}".format(tf.__version__))
-print("Eager execution: {}".format(tf.executing_eagerly()))
-print("The first five lines from the training data file:")
-fd = open(localFilenameTrain)
+fd = open(os.path.join(path_prefix, filenameTrain))
 for i in range(5):
-    sys.stdout.write(fd.readline())
+    print(fd.readline())
 fd.close()
 
 # Extract tf.data.Dataset representations of labels and features in CSV files
@@ -89,14 +72,14 @@ def get_dataset(file_path, plotDataset=False):
 
 
 # Load the training data set
-raw_train_data, raw_train_data_length = get_dataset(localFilenameTrain, plotDataset=True)
+raw_train_data, raw_train_data_length = get_dataset(os.path.join(path_prefix, filenameTrain), plotDataset=True)
 
 print("\n\nTraining data set.")
 for feat, targ in raw_train_data.take(5):
     print ('Features: {}, Target: {}'.format(feat, targ))
 
 # Load the test/evaluation data set
-raw_test_data, raw_test_data_length = get_dataset(localFilenameTest)
+raw_test_data, raw_test_data_length = get_dataset(os.path.join(path_prefix, filenameTest))
 
 print("\n\nTesting data set.")
 for feat, targ in raw_test_data.take(5):
@@ -104,6 +87,8 @@ for feat, targ in raw_test_data.take(5):
 
 print("\n\n")
 
+seed = 123
+LEARNING_RATE = 0.005
 BATCH_SIZE = 50
 NUM_EPOCHS = 30 # Number of epochs, full passes of the data
 NUM_INPUTS = 2
@@ -114,19 +99,73 @@ NUM_HIDDEN_NODES = 20
 # an multilayer perceptron network with an RELU activation function and the output
 # layer is is a softmax activation function with a negative log likelihood loss function.
 # 
-# The weight initializer in the Deep Learning book is Xavier and it is seeded with 123
-initializer = tf.keras.initializers.GlorotNormal(seed=123)
+# The weight initializer in the Deep Learning book is Xavier
 
 model = Sequential([
-    tf.keras.layers.Dense(NUM_HIDDEN_NODES, activation='relu', kernel_initializer=initializer),
-    tf.keras.layers.Dense(NUM_OUTPUTS, activation='softmax', kernel_initializer=initializer)
+    tf.keras.layers.Dense(NUM_HIDDEN_NODES, activation='relu'),
+    tf.keras.layers.Dense(NUM_OUTPUTS, activation='softmax')
 ])
+
+# For this example, we need to calcualte the negative log likelihood of the model given the data
+# To do this with Keras, we need to create a class that inhertis from the tf.keras.losses.Loss class 
+# and implement the following two methods:
+#   __init__(self) —Accept parameters to pass during the call of your loss function
+#   call(self, y_true, y_pred) —Use the targets (y_true) and the model predictions (y_pred) to compute the model's loss
+#
+# See: 
+class NegLogLikelihood(tf.keras.losses.Loss):
+    """Loss class calcuates the negative log likelihood of the model, given the data.
+    
+    Arguments:
+        model -- The Keras neural network model
+        reduction -- Type of tf.keras.losses.Reduction to apply to loss.
+        name -- Name of the loss function.
+    """
+    def __init__(self, model, reduction=tf.keras.losses.Reduction.AUTO, name='nll_gausian'):
+        super().__init__(reduction=reduction, name=name)
+        self.model = model
+
+    """Need to convert the loss function below to a 
+    loss function suitable to the above input parameters.
+
+    Likelihood is the probability that the calculated parameters
+    produced the known data. Probability of the parameters (model)
+    given the data.
+
+    Likelihood:
+    L = Product i=1..N p(x(i) | theta)
+
+    NLL:
+    NLL = Sum i=1..N -log(p(x(i) | theta))
+
+    where, p(x(i) | theta) is the gausian probability density function
+    """
+    def call(self, y_true, y_pred):
+        print("y_true:", y_true, ", y_pred:", y_pred)
+        y_pred_mean = tf.math.reduce_mean(y_pred, axis=-1)
+        y_pred_sd = tf.math.reduce_std(y_pred, axis=-1)
+
+        print("mean:", y_pred_mean, ", sd:", y_pred_sd)
+
+        ## element wise square
+        square = tf.square(y_pred_mean - y_true)## preserve the same shape as y_pred.shape
+        ms = tf.add(tf.divide(square,y_pred_sd), tf.math.log(y_pred_sd))
+        ## axis = -1 means that we take mean across the last dimension 
+        ## the output keeps all but the last dimension
+        ## ms = tf.reduce_mean(ms,axis=-1)
+        ## return scalar
+        ms = tf.reduce_mean(ms)
+        print("ms:", ms)
+        return(ms)
 
 # To train using the Dataset, we should shuffle and batch the data
 training_batches = raw_train_data.shuffle(raw_train_data_length).batch(BATCH_SIZE)
 
 # Optimizer is Adam, loss function is mean squared error
-model.compile(loss = tf.losses.MeanSquaredError(), optimizer = tf.optimizers.Adam(), metrics=['accuracy'])
+# model.compile(loss = tf.losses.MeanSquaredError(), optimizer = tf.optimizers.Adam(), metrics=['accuracy'])
+
+# Optimizer is stochastic gradient descent (sgd), loss function is negative log likelihood
+model.compile(optimizer='sgd', loss=NegLogLikelihood(model), metrics=['accuracy'])
 
 history = model.fit(training_batches, epochs=NUM_EPOCHS, verbose=1)
 model.summary()
@@ -134,7 +173,7 @@ model.summary()
 # plot history
 pyplot.plot(history.history['loss'], label='loss')
 pyplot.plot(history.history['accuracy'], label='accuracy')
-pyplot.title('Training loss and accuracy (MSE loss)')
+pyplot.title('Training loss and accuracy')
 pyplot.legend()
 pyplot.show()
 
