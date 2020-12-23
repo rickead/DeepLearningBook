@@ -41,7 +41,7 @@ if not os.path.isdir(path_prefix) or not os.path.exists(localFilenameTrain) or n
 
 print("\n\nExample 5.1 with TensorFlow version: {}".format(tf.__version__))
 print("Eager execution: {}".format(tf.executing_eagerly()))
-print("The first five lines from the training data file:")
+print("\nThe first five lines from the training data file:")
 fd = open(localFilenameTrain)
 for i in range(5):
     sys.stdout.write(fd.readline())
@@ -56,8 +56,8 @@ def get_dataset(file_path, plotDataset=False):
     df = pd.read_csv(file_path, header=None)
 
     # The first column is the column of classification labels. Peel off the column of labels as a 
-    # vector of 64 bit floating point values.
-    labels = df.pop(0).astype(np.float64)
+    # vector of 32 bit integer values for use with the tf.one_hot() function.
+    labels = df.pop(0)
 
     dataset_length = len(labels)
 
@@ -77,8 +77,8 @@ def get_dataset(file_path, plotDataset=False):
     NUM_LABELS = np.max(labels) + 1
 
     # Convert the integer lables into a one hot encoding matrix
-    labels_onehot = (np.arange(NUM_LABELS) == labels[:, None]).astype(np.float64)
-    
+    labels_onehot = tf.one_hot(labels, depth=NUM_LABELS)
+
     # A tf.data.Dataset represents a sequence of elements, where each element consists of the data and the data label.
     # See: https://www.tensorflow.org/guide/data
     # As one-hot encoded data...
@@ -91,14 +91,16 @@ def get_dataset(file_path, plotDataset=False):
 # Load the training data set
 raw_train_data, raw_train_data_length = get_dataset(localFilenameTrain, plotDataset=True)
 
-print("\n\nTraining data set.")
+print("\nDataset element defintion:\n\t", raw_train_data.element_spec)
+
+print("\nTraining data set.")
 for feat, targ in raw_train_data.take(5):
     print ('Features: {}, Target: {}'.format(feat, targ))
 
 # Load the test/evaluation data set
 raw_test_data, raw_test_data_length = get_dataset(localFilenameTest)
 
-print("\n\nTesting data set.")
+print("\nTesting data set.")
 for feat, targ in raw_test_data.take(5):
     print ('Features: {}, Target: {}'.format(feat, targ))
 
@@ -109,13 +111,14 @@ NUM_EPOCHS = 30 # Number of epochs, full passes of the data
 NUM_INPUTS = 2
 NUM_OUTPUTS = 2
 NUM_HIDDEN_NODES = 20
+MY_SEED=123
 
 # Build the model. For this example, the model has two layers. The input layer is 
 # an multilayer perceptron network with an RELU activation function and the output
 # layer is is a softmax activation function with a negative log likelihood loss function.
 # 
 # The weight initializer in the Deep Learning book is Xavier and it is seeded with 123
-initializer = tf.keras.initializers.GlorotNormal(seed=123)
+initializer = tf.keras.initializers.GlorotNormal(seed=MY_SEED)
 
 model = Sequential([
     tf.keras.layers.Dense(NUM_HIDDEN_NODES, activation='relu', kernel_initializer=initializer),
@@ -123,7 +126,7 @@ model = Sequential([
 ])
 
 # To train using the Dataset, we should shuffle and batch the data
-training_batches = raw_train_data.shuffle(raw_train_data_length).batch(BATCH_SIZE)
+training_batches = raw_train_data.shuffle(raw_train_data_length, seed=MY_SEED).batch(BATCH_SIZE)
 
 # Optimizer is Adam, loss function is mean squared error
 model.compile(loss = tf.losses.MeanSquaredError(), optimizer = tf.optimizers.Adam(), metrics=['accuracy'])
@@ -139,6 +142,6 @@ pyplot.legend()
 pyplot.show()
 
 # Run against the test set. Final evaluation of the model
-testing_batches = raw_test_data.shuffle(raw_test_data_length).batch(BATCH_SIZE)
+testing_batches = raw_test_data.shuffle(raw_test_data_length, seed=MY_SEED).batch(BATCH_SIZE)
 scores = model.evaluate(testing_batches, verbose=0)
 print("Test set analysis accuracy: %.2f%%" % (scores[1]*100))
