@@ -1,9 +1,11 @@
 """
 
-Example 5-1, pg 175 - Modeling CSV data with multilayer perceptron networks
+Example 5-1b, pg 175 - Modeling CSV data with multilayer perceptron networks
 
 Basic usage of the TensorFlow 2.3 framework using the embedded Keras API 
 using a synthetic non-linear dataset and a multilayer perceptron network.
+
+Part B is writing a user-defined function for the mean-squared error.
 
 Dataset: https://github.com/jasonbaldridge/try-tf/tree/master/simdata
 
@@ -22,11 +24,7 @@ import sys
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Input, Dense
 
-import tensorflow.python.platform
-import tensorflow as tf
 import wget  # pip3 install wget
-import numpy as np
-import datetime
 
 import importlib
 
@@ -105,6 +103,40 @@ def get_dataset(file_path, **kwargs):
     return dataset
 
 
+class MeanSquaredError(tf.keras.losses.Loss):
+    """Custom loss function for calculating the loss as the 
+    mean-sequared error between the true output and the predicted output"""
+
+    def call(self, y_true, y_pred):
+        y_true = tf.cast(y_true, y_pred.dtype)
+        return tf.reduce_mean(tf.square(y_pred - y_true), axis=-1)
+
+TWO_PI = np.pi
+
+class NegativeLogLikelihood(tf.keras.losses.Loss):
+    """Custom loss function for calculating the loss as negative log 
+    likelihood between the true output and the predicted output"""
+
+    def call(self, y_true, y_pred):
+        # Calculating the mean and variance of the predicted values along each column
+        mean_y_pred = tf.reduce_mean(y_pred, axis=0, keepdims=True)
+        var_y_pred = tf.math.reduce_variance(y_pred, axis=0, keepdims=True)
+
+        # NLL = SUM_i ( log(2*PI*var)/2 + (y_i - mean)^2 / 2*var )
+        # Constants removed from function for simplfication
+        y_true = tf.cast(y_true, y_pred.dtype)
+        square = tf.square(mean_y_pred - y_true)
+        pdf = tf.add(tf.math.log(TWO_PI*var_y_pred)/2, tf.math.divide(square, 2*var_y_pred))
+
+        #tf.print("mean y_pred", mean_y_pred, output_stream=sys.stderr)
+        #tf.print(" var y_pred", var_y_pred, output_stream=sys.stderr)
+        #tf.print("     square", square, output_stream=sys.stderr)
+        #tf.print("pdf", pdf, output_stream=sys.stderr)
+        loss = tf.reduce_mean(pdf)
+        #tf.print("loss is ", loss, output_stream=sys.stderr)
+        return loss
+
+
 BATCH_SIZE = 50
 NUM_EPOCHS = 40  # Number of epochs, full passes of the data
 NUM_INPUTS = 2
@@ -157,20 +189,24 @@ model = Sequential(
     ]
 )
 
+# Negative log likelihood loss function
+# In practice, this is implemented as an alias for LossMCXENT 
+# due to the mathematical equivalence
+# Multi-Class Cross Entropy loss function:
+# L = sum_i actual_i * log( predicted_i )
+# Note that labels are represented by a one-hot distribution
+# http://www.awebb.info/probability/2017/05/18/cross-entropy-and-log-likelihood.html
+
 # Optimizer is Adam, loss function is mean squared error
 model.compile(
-    loss=tf.losses.MeanSquaredError(),
-    optimizer=tf.optimizers.Adam(),
+    loss=tf.keras.losses.CategoricalCrossentropy(), #MeanSquaredError(),
+    optimizer=tf.optimizers.SGD(), #tf.optimizers.Adam(),
     metrics=["accuracy"],
 )
 
 print("\n\nFit the training data.")
-t0 = datetime.datetime.now()
-
 history = model.fit(training_batches, epochs=NUM_EPOCHS, verbose=1)
 model.summary()
-
-print("It took", (datetime.datetime.now() - t0).total_seconds(), " seconds to train the model.")
 
 if PLT_FOUND:
     # plot history
@@ -180,9 +216,6 @@ if PLT_FOUND:
     pyplot.legend()
     pyplot.show()
 
-t0 = datetime.datetime.now()
 # Run against the test set. Final evaluation of the model
 scores = model.evaluate(testing_batches, verbose=0)
 print("Test set analysis accuracy: %.2f%%" % (scores[1] * 100))
-
-print("It took", (datetime.datetime.now() - t0).total_seconds(), " seconds to evaluate the model.")
