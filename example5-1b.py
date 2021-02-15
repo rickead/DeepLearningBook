@@ -5,7 +5,7 @@ Example 5-1b, pg 175 - Modeling CSV data with multilayer perceptron networks
 Basic usage of the TensorFlow 2.3 framework using the embedded Keras API 
 using a synthetic non-linear dataset and a multilayer perceptron network.
 
-Part B is writing a user-defined function for the mean-squared error.
+Part B is using multiclass cross entropy as the loss function.
 
 Dataset: https://github.com/jasonbaldridge/try-tf/tree/master/simdata
 
@@ -25,14 +25,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Input, Dense
 
 import wget  # pip3 install wget
-
-import importlib
-
-matplotlib_loader = importlib.find_loader("matplotlib")
-PLT_FOUND = matplotlib_loader is not None
-if PLT_FOUND:
-    import matplotlib as pyplot
-
 
 path_prefix = os.path.join("data", "example1")
 filenameTrain = "saturn_data_train.csv"
@@ -91,50 +83,8 @@ def get_dataset(file_path, **kwargs):
 
     # Convert the integer lables in the dataset to one-hot encoded values.
     dataset = dataset.map(lambda x, y: (x, tf.one_hot(y, depth=NUM_LABELS)))
-    if PLT_FOUND:
-        pyplot.figure()
-        # There are only two labels in this dataset 0 or 1
-        idx = labels > 0.5
-        pyplot.scatter(feat[idx, 0], feat[idx, 1], marker="+", c="#ff0000")
-        idx = labels <= 0.5
-        pyplot.scatter(feat[idx, 0], feat[idx, 1], marker="o", c="#00ff00")
-        pyplot.show()
 
     return dataset
-
-
-class MeanSquaredError(tf.keras.losses.Loss):
-    """Custom loss function for calculating the loss as the 
-    mean-sequared error between the true output and the predicted output"""
-
-    def call(self, y_true, y_pred):
-        y_true = tf.cast(y_true, y_pred.dtype)
-        return tf.reduce_mean(tf.square(y_pred - y_true), axis=-1)
-
-TWO_PI = np.pi
-
-class NegativeLogLikelihood(tf.keras.losses.Loss):
-    """Custom loss function for calculating the loss as negative log 
-    likelihood between the true output and the predicted output"""
-
-    def call(self, y_true, y_pred):
-        # Calculating the mean and variance of the predicted values along each column
-        mean_y_pred = tf.reduce_mean(y_pred, axis=0, keepdims=True)
-        var_y_pred = tf.math.reduce_variance(y_pred, axis=0, keepdims=True)
-
-        # NLL = SUM_i ( log(2*PI*var)/2 + (y_i - mean)^2 / 2*var )
-        # Constants removed from function for simplfication
-        y_true = tf.cast(y_true, y_pred.dtype)
-        square = tf.square(mean_y_pred - y_true)
-        pdf = tf.add(tf.math.log(TWO_PI*var_y_pred)/2, tf.math.divide(square, 2*var_y_pred))
-
-        #tf.print("mean y_pred", mean_y_pred, output_stream=sys.stderr)
-        #tf.print(" var y_pred", var_y_pred, output_stream=sys.stderr)
-        #tf.print("     square", square, output_stream=sys.stderr)
-        #tf.print("pdf", pdf, output_stream=sys.stderr)
-        loss = tf.reduce_mean(pdf)
-        #tf.print("loss is ", loss, output_stream=sys.stderr)
-        return loss
 
 
 BATCH_SIZE = 50
@@ -199,22 +149,15 @@ model = Sequential(
 
 # Optimizer is Adam, loss function is mean squared error
 model.compile(
-    loss=tf.keras.losses.CategoricalCrossentropy(), #MeanSquaredError(),
-    optimizer=tf.optimizers.SGD(), #tf.optimizers.Adam(),
+    loss=tf.keras.losses.CategoricalCrossentropy(),
+    # optimizer=tf.optimizers.Adam(),  # Adam optimizer 94.95% test set accuracy
+    optimizer=tf.optimizers.SGD(),  # Gradient descent optimizer 92.93% test set accuracy
     metrics=["accuracy"],
 )
 
 print("\n\nFit the training data.")
 history = model.fit(training_batches, epochs=NUM_EPOCHS, verbose=1)
 model.summary()
-
-if PLT_FOUND:
-    # plot history
-    pyplot.plot(history.history["loss"], label="loss")
-    pyplot.plot(history.history["accuracy"], label="accuracy")
-    pyplot.title("Training loss and accuracy (MSE loss)")
-    pyplot.legend()
-    pyplot.show()
 
 # Run against the test set. Final evaluation of the model
 scores = model.evaluate(testing_batches, verbose=0)
