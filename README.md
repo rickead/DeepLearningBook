@@ -8,4 +8,6 @@ The final version of each example is in this top-level directory, with scripts t
  - python wget
 
  # Files
-  - 'example5-1.py' - Modeling CSV data with a multilayer perceptron network.
+  - 'example5-1.py' - Modeling CSV data with a multilayer perceptron network. Test set accuracy 97.98%.
+  - 'example5-1b.py' - Uses CategoricalCrossentropy as the loss function instead of Mean Squared Error. Gradient Descent Optimizer Test set accuracy 92.93%. Adam Optimizer Test set accuracy 94.95%.
+  
