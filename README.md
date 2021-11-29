@@ -4,10 +4,12 @@ This repository contains a set of examples from the Deep Learning book, written 
 The final version of each example is in this top-level directory, with scripts that are not ready for publication in the 'future' directory.
 
 # Dependencies
- - Tensor 2.3
+ - Tensor 2.6
  - python wget
 
  # Files
   - 'example5-1.py' - Modeling CSV data with a multilayer perceptron network. Test set accuracy 97.98%.
   - 'example5-1b.py' - Uses CategoricalCrossentropy as the loss function instead of Mean Squared Error. Gradient Descent Optimizer Test set accuracy 92.93%. Adam Optimizer Test set accuracy 94.95%.
+  - 'example5-2.py' - Modeling handwritten images using CNNs. (Convolutional Neural Networks). Model validation accuracy is 98.27%.
+  - 
   
