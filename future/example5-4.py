@@ -1,6 +1,6 @@
 '''
 
-Example 5-3, pg 191 - Classifying Sensor Time-series Sequences Using LSTMs
+Example 5-4, pg 191 - Classifying Sensor Time-series Sequences Using LSTMs
 
 https://archive.ics.uci.edu/ml/datasets/synthetic+control+chart+time+series
 

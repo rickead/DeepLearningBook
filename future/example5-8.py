@@ -1,6 +1,6 @@
 '''
 
-Example 5-8, pg 207 - Using Variational Autoencoders to Reconstruct MNIST Digits
+Example 5-8, pg 228 - Building paragraph vectors
 
 Generate variations of the MNIST digit dataset to show the capabilities of VAEs as generative models
 
