@@ -136,3 +136,5 @@ training_checkpoints
 *.gif
 *.png
 
+.DS_Store
+
