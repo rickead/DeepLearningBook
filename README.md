@@ -13,4 +13,6 @@ The final version of each example is in this top-level directory, with scripts t
   - 'example5-2.py' - Modeling handwritten images using CNNs. (Convolutional Neural Networks). Model validation accuracy is 98.27%.
   - 'example5-3.py' - Generating Shakespeare via LSTMs
   - 'example5-4.py' - Classifying Sensor Time-series Sequences using LSTMs
+  - 'example5-5.py' - Using Autoencoders for Anomaly Detection. The resulting best five digits and worst five digits are all classified correctly.
+  
   

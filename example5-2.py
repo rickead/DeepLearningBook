@@ -17,6 +17,7 @@ import tensorflow as tf
 import numpy as np
 
 import os
+import mnist_utils
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Input, Dense, Conv2D, MaxPooling2D
 import matplotlib.pyplot as plt
@@ -29,6 +30,7 @@ import requests
 # For usage examples see: http://rasbt.github.io/mlxtend/user_guide/data/loadlocal_mnist/
 
 print("Using TensorFlow Version", tf.__version__)
+
 
 ###############################################################################
 # Functions
@@ -43,26 +45,6 @@ def show_batch(image_batch, label_batch):
     plt.show(block=False)
     plt.pause(3)
     plt.close()
-
-
-def get_dataset(path_prefix, images_file, labels_file):
-    X_int, y = loadlocal_mnist(
-        images_path=os.path.join(path_prefix, images_file),
-        labels_path=os.path.join(path_prefix, labels_file),
-    )
-    # Convert labels to a one-hot matrix
-    y_onehot = (np.arange(NUM_LABELS) == y[:, None]).astype(np.float32)
-    # Convert the grayscale uint8 values to 32bit 0 - 1 values.
-    X = np.array(X_int, dtype=np.float32) / 255.0
-
-    # print("X Dimensions: %s x %s" % (X.shape[0], X.shape[1]))
-    # print("y Dimensions: %s x %s" % (y_onehot.shape[0], y_onehot.shape[1]))
-
-    # Reshape the input to be a 4D tensor with shape (batch, rows, cols, channels)
-    X = X.reshape((X.shape[0], 28, 28, 1))
-    # print("X Dimensions: ", X.shape)
-
-    return X, y, y_onehot
 
 
 ###############################################################################
@@ -143,36 +125,15 @@ if __name__ == "__main__":
         */
 
     """
-    training_files = ("train-images-idx3-ubyte", "train-labels-idx1-ubyte")
-    testing_files = ("t10k-images-idx3-ubyte", "t10k-labels-idx1-ubyte")
-
-    files = training_files + testing_files
 
     print("\nDownload data, if necessary...")
-    path_prefix = os.path.join(os.getcwd(), "data", "mnist")
+    path_prefix = mnist_utils.mnist_path()
     if not os.path.isdir(path_prefix):
         print("Downloading data from MNIST dataset")
-        files = (
-            "t10k-images-idx3-ubyte.gz",
-            "t10k-labels-idx1-ubyte.gz",
-            "train-images-idx3-ubyte.gz",
-            "train-labels-idx1-ubyte.gz",
-        )
-        uri_prefix = "http://yann.lecun.com/exdb/mnist"
-        os.mkdir(path_prefix)
-        for f in files:
-            command_string = "curl -o %s %s/%s" % (
-                os.path.join(path_prefix, f),
-                uri_prefix,
-                f,
-            )
-            print(command_string)
-            os.system(command_string)
-
-        os.system("cd %s && gunzip t*-ubyte.gz" % path_prefix)
+        mnist_utils.download_data(path_prefix)
 
     print("\nLoad training data...")
-    X, y, y_onehot = get_dataset(path_prefix, training_files[0], training_files[1])
+    X, y, y_onehot = mnist_utils.read_training_data(path_prefix)
 
     # The show_batch function expects a series of grayscale images. Reshape the
     # array to provide those images.
@@ -249,9 +210,7 @@ if __name__ == "__main__":
 
     print("\nLoad testing data...")
     # Load the test images and verify the accuracy of the model.
-    test_images, test_labels, test_labels_onehot = get_dataset(
-        path_prefix, testing_files[0], testing_files[1]
-    )
+    test_images, test_labels, test_labels_onehot = mnist_utils.read_testing_data(path_prefix)
 
     test_loss, test_acc = model.evaluate(test_images, test_labels_onehot, verbose=2)
     print("Model validation accuracy is ", test_acc)

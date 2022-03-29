@@ -14,13 +14,19 @@ All code is written to run on Tensorflow 2 using the embedded Keras API.
 # Imports
 # Modules needed by the script.
 ###############################################################################
-import tensorflow.python.platform
 import tensorflow as tf
 import numpy as np
-import mnist
+import os
+import mnist_utils
+
+
+from mlxtend.data import loadlocal_mnist
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Input, Dense, Conv2D, MaxPooling2D
+
+
+print("Using TensorFlow Version", tf.__version__)
 
 
 ###############################################################################
@@ -30,7 +36,7 @@ def show_batch(image_batch, label_batch, title="", display_time=5):
     plt.figure(figsize=(10,10))
     plt.title(title)
     N = len(label_batch)
-    rows = N/5
+    rows = int(N/5)
     for n in range(N):
         ax = plt.subplot(rows,5,n+1)
         plt.imshow(image_batch[n])
@@ -44,6 +50,7 @@ def show_batch(image_batch, label_batch, title="", display_time=5):
         plt.show()
     plt.close()
 
+
 ###############################################################################
 # Main program
 #
@@ -54,25 +61,35 @@ def show_batch(image_batch, label_batch, title="", display_time=5):
 ###############################################################################
 if __name__ == '__main__':
 
-    X, y, y_onehot = mnist.load(split='train')
-    X_test, y_test, y_test_onehot = mnist.load(split='test')
+    print("\nDownload data, if necessary...")
+    path_prefix = mnist_utils.mnist_path()
+    if not os.path.isdir(path_prefix):
+        print("Downloading data from MNIST dataset")
+        mnist_utils.download_data(path_prefix)
 
-    # Binarization Set all of the values in the map to either 1 or a zero
+    print("\nLoad training data and test data...")
+    X, y, y_onehot = mnist_utils.read_training_data(path_prefix)
+    X_test, y_test, y_test_onehot = mnist_utils.read_testing_data(path_prefix)
+
+
+    # Binarization- Set all of the values in the map to either 1 or a zero
     X[X >= 0.5] = 1
     X[X < 0.5] = 0
     X_test[X_test >= 0.5] = 1
     X_test[X_test < 0.5] = 0
 
-    # Build the neural network. 784 in/out as MNIST images are 28x28
+    # Build the autoencoder neural network. 784 in/out as MNIST images are 28x28
     NUM_IN = X.shape[1] * X.shape[2]
+    # The number of labels is used for the code layer
     NUM_LABELS = y_onehot.shape[1]
+    # Number of nodes for the encoder/decoder layers
     NUM_NODES = 250
 
     # Flatten X into a batch, 784 shape
     X = X.reshape((X.shape[0], NUM_IN))
     X_test = X_test.reshape((X_test.shape[0], NUM_IN))
 
-    # The show_batch function expects a series of grayscale images. Reshape the
+    # The show_batch() function expects a series of grayscale images. Reshape the
     # array to provide those images.
     batch = X[0:25,].reshape(25,28,28)
     show_batch(batch, y[0:25,], "Example digits", 5)
@@ -82,11 +99,16 @@ if __name__ == '__main__':
     # 784 -> 250 -> 10 -> 250 -> 784
     print("\nBuild model... {0} -> {1} -> {2} -> {1} -> {0}".format(NUM_IN, NUM_NODES, NUM_LABELS))
 
+    # The example 5-5 uses XAVIER weight initialization, ADAGRAD for the updater
+    # RELU for activation, Stochastic Gradient Descent for optimization with
+    # a learning rate of 0.05. This example attempts to duplicate this with TensorFlow,
+    # but some of these techniques are slightly outdated.
+
     # Here we will specify the "Xavier" normal initializer
     initializer = tf.keras.initializers.GlorotNormal()
 
     model = Sequential([
-        tf.keras.layers.InputLayer(input_shape=(NUM_IN,)),
+        tf.keras.layers.InputLayer(input_shape=(NUM_IN,)), # 784
         tf.keras.layers.Dense(NUM_NODES, activation='relu', kernel_initializer=initializer),
         tf.keras.layers.Dense(NUM_LABELS, activation='relu', kernel_initializer=initializer),
         tf.keras.layers.Dense(NUM_NODES, activation='relu', kernel_initializer=initializer),
@@ -175,7 +197,3 @@ if __name__ == '__main__':
     indexes = np.array(worstFiveIndex, dtype=int)
     batch = X_test[indexes,].reshape(indexes.shape[0],28,28)
     show_batch(batch, y_test[indexes,], "Worst Five Digits", -1)
-
-
-
-
